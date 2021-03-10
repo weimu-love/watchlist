@@ -45,7 +45,10 @@ class Movie(db.Model):
     # 电影年份
     year = db.Column(db.String(4))
 
+
 """Generate fake data."""
+
+
 # 命令行输入 flask forge即可运行
 @app.cli.command()
 def forge():
@@ -79,10 +82,26 @@ def forge():
 @app.route('/home')
 def index():
     # 读取用户记录
-    user = User.query.first()
+    # user = User.query.first()
     # 读取所有电影记录
     movies = Movie.query.all()
-    return render_template('index.html', user=user, movies=movies)
+    # print(user.name)
+    return render_template('index.html', movies=movies)
+
+
+@app.errorhandler(404)  # 传入要处理的错误代码
+def page_not_found(e):  # 接受异常对象作为参数
+    # user = User.query.first()
+    # 通的视图函数之所以不用写出状态码，是因为默认会使用 200 状态码，表示成功。
+    return render_template('404.html'), 404
+
+
+# 模板上下文处理函数
+# 这个函数返回的变量（以字典键值对的形式）将会统一注入到每一个模板的上下文环境中，因此可以直接在模板中使用。
+@app.context_processor
+def inject_user():
+    user = User.query.first()
+    return dict(user=user)
 
 
 @app.route('/img')
