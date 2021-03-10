@@ -6,28 +6,83 @@
 """
 from flask import Flask, render_template
 from flask import escape, url_for
+from flask_sqlalchemy import SQLAlchemy
+import os, sys
+import click
 
 app = Flask(__name__)
 
-name = 'Wei Mu'
-movies = [
-    {'title': 'My Neighbor Totoro', 'year': '1988'},
-    {'title': 'Dead Poets Society', 'year': '1989'},
-    {'title': 'A Perfect World', 'year': '1993'},
-    {'title': 'Leon', 'year': '1994'},
-    {'title': 'Mahjong', 'year': '1996'},
-    {'title': 'Swallowtail Butterfly', 'year': '1996'},
-    {'title': 'King of Comedy', 'year': '1999'},
-    {'title': 'Devils on the Doorstep', 'year': '1999'},
-    {'title': 'WALL-E', 'year': '2008'},
-    {'title': 'The Pork of Music', 'year': '2012'},
-]
+# SQLALCHEMY_DATABASE_URI变量值，不同的 DBMS 有不同的格式，对于 SQLite是“sqlite:///数据库文件的绝对地址”
+# windows下为3根斜线
+WIN = sys.platform.startswith('win')
+if WIN:
+    prefix = 'sqlite:///'
+else:
+    prefix = 'sqlite:////'
+app.config['SQLALCHEMY_DATABASE_URI'] = prefix + os.path.join(app.root_path, 'data.db')
+
+# 关闭对模型修改的监控
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 在扩展类实例化前加载配置
+db = SQLAlchemy(app)
+
+
+# User表对应的类
+class User(db.Model):
+    # 主键ID
+    id = db.Column(db.Integer, primary_key=True)
+    # 用户名
+    name = db.Column(db.String(20))
+
+
+# Movie表对应的类
+class Movie(db.Model):
+    # 主键ID
+    id = db.Column(db.Integer, primary_key=True)
+    # 电影标题
+    title = db.Column(db.String(60))
+    # 电影年份
+    year = db.Column(db.String(4))
+
+"""Generate fake data."""
+# 命令行输入 flask forge即可运行
+@app.cli.command()
+def forge():
+    db.create_all()
+
+    name = 'Wei Mu'
+    movies = [
+        {'title': 'My Neighbor Totoro', 'year': '1988'},
+        {'title': 'Dead Poets Society', 'year': '1989'},
+        {'title': 'A Perfect World', 'year': '1993'},
+        {'title': 'Leon', 'year': '1994'},
+        {'title': 'Mahjong', 'year': '1996'},
+        {'title': 'Swallowtail Butterfly', 'year': '1996'},
+        {'title': 'King of Comedy', 'year': '1999'},
+        {'title': 'Devils on the Doorstep', 'year': '1999'},
+        {'title': 'WALL-E', 'year': '2008'},
+        {'title': 'The Pork of Music', 'year': '2012'},
+    ]
+
+    user = User(name=name)
+    db.session.add(user)
+    for m in movies:
+        movie = Movie(title=m['title'], year=m['year'])
+        db.session.add(movie)
+
+    db.session.commit()
+    click.echo('Done.')
 
 
 @app.route('/')
 @app.route('/home')
 def index():
-    return render_template('index.html', name=name, movies=movies)
+    # 读取用户记录
+    user = User.query.first()
+    # 读取所有电影记录
+    movies = Movie.query.all()
+    return render_template('index.html', user=user, movies=movies)
 
 
 @app.route('/img')
